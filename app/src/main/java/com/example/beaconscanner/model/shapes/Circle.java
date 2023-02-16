@@ -1,17 +1,24 @@
-package com.example.beaconscanner.model;
+package com.example.beaconscanner.model.shapes;
+
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
+import java.util.ArrayList;
 
 import android.opengl.GLES20;
+import android.opengl.Matrix;
 import android.util.Log;
+
+import com.example.beaconscanner.model.Point;
+import com.example.beaconscanner.utils.ColorUntil;
+import com.example.beaconscanner.utils.CoordinateCaculator;
 
 /**
  * A two-dimensional square for use as a drawn object in OpenGL ES 2.0.
  */
-public class Line {
+public class Circle {
     private final String vertexShaderCode =
             // This matrix member variable provides a hook to manipulate
             // the coordinates of the objects that use this vertex shader
@@ -36,33 +43,44 @@ public class Line {
     private int mColorHandle;
     private int mMVPMatrixHandle;
     // number of coordinates per vertex in this array
+    public float[] mModelMatrix = new float[16];
     static final int COORDS_PER_VERTEX = 3;
-    float squareCoords[] = {
-            -0.5f, 0.5f, 0f,   // top left
-            -0.5f, -0.5f, 0f,   // bottom left
-            0.5f, -0.5f, 0f,   // bottom right
-            0.5f, 0.5f, 0f}; // top right
-    private final short drawOrder[] = {0, 1, 2, 0, 2, 3}; // order to draw vertices
+    public float size;
+    float squareCoords[]; // top right
+    private final short drawOrder[] = {0, 1, 2,
+            0, 2, 3,
+            0, 4, 1,
+            1, 4, 2,
+            2, 4, 3,
+            3, 4, 0
+    }; // order to draw vertices
     private final int vertexStride = COORDS_PER_VERTEX * 4; // 4 bytes per vertex
     float color[] = {0.2f, 0.709803922f, 0.898039216f, 1.0f};
+    private ArrayList<Point> arrayPoint = new ArrayList<>();
+    private Point O = new Point(0f, 0f);
+    private Point middle = new Point(0f,0f);
 
     /**
      * Sets up the drawing object data for use in an OpenGL ES context.
      */
-    public Line(boolean isVetical, float x, float y, float width) {
-        if (isVetical) {
-            squareCoords = new float[]{
-                    x, y, 0f,   // top left
-                    x, -y, 0f,   // bottom left
-                    x + width, -y, 0f,   // bottom right
-                    x + width, y, 0f}; // top right
-        } else {
-            squareCoords = new float[]{
-                    -x, y, 0f,   // top left
-                    x, y + width, 0f,   // bottom left
-                    -x, y + width, 0f,   // bottom right
-                    x, y, 0f}; // top right
+    public Circle(float x, float y, float size,float[] color) {
+        this.color = color;
+        middle.setX(x);
+        middle.setY(y);
+        this.size = size;
+        arrayPoint.add(new Point(x,y+size));
+        for(int i=1;i<360;i++){
+            arrayPoint.add(CoordinateCaculator.INSTANCE.circleXY(middle, size, i*1f));
         }
+        float[] arr = new float[arrayPoint.size()*3];
+        for(int i=0;i<arrayPoint.size();i++){
+            arr[i*3]= arrayPoint.get(i).getX();
+            arr[i*3+1]=arrayPoint.get(i).getY();
+            arr[i*3+2]=0f;
+        }
+        squareCoords = arr;
+
+        Matrix.setIdentityM(mModelMatrix, 0);
         // initialize vertex byte buffer for shape coordinates
         ByteBuffer bb = ByteBuffer.allocateDirect(
                 // (# of coordinate values * 4 bytes per float)
@@ -91,21 +109,35 @@ public class Line {
         GLES20.glAttachShader(mProgram, fragmentShader); // add the fragment shader to program
         GLES20.glLinkProgram(mProgram);                  // create OpenGL program executables
     }
+public void setSize(float value){
+        this.size = value;
+}
+    public void setMiddlePoint(Point coordinate) {
+        middle = coordinate;
+        ArrayList<Point> arrayPoint = new ArrayList<>();
+        arrayPoint.add(new Point(middle.getX(),middle.getY()+size));
+        for(int i=1;i<360;i++){
+            arrayPoint.add(CoordinateCaculator.INSTANCE.circleXY(middle, size, i*1f));
+        }
+        float[] arr = new float[arrayPoint.size()*3];
+        for(int i=0;i<arrayPoint.size();i++){
+            arr[i*3]= arrayPoint.get(i).getX();
+            arr[i*3+1]=arrayPoint.get(i).getY();
+            arr[i*3+2]=0f;
+        }
+        squareCoords = arr;
+        vertexBuffer.put(squareCoords);
+        vertexBuffer.position(0);
+    }
 
-    /**
-     * Encapsulates the OpenGL ES instructions for drawing this shape.
-     *
-     * @param mvpMatrix - The Model View Project matrix in which to draw
-     *                  this shape.
-     */
+    public Point getPosition() {
+        return middle;
+    }
 
-//    public void setSquareCoords(float width, float heigh){
-//        squareCoords = new float[]{
-//                -width, heigh, 0f,   // top left
-//                -width, -heigh, 0f,   // bottom left
-//                width, -heigh, 0f,   // bottom right
-//                width, heigh, 0f}; // top right
-//    }
+    public void setColor(float[] color) {
+        GLES20.glUniform4fv(mColorHandle, 1, color, 0);
+    }
+
     public void draw(float[] mvpMatrix) {
         // Add program to OpenGL environment
         GLES20.glUseProgram(mProgram);
@@ -128,10 +160,11 @@ public class Line {
         // Apply the projection and view transformation
         GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, mvpMatrix, 0);
         checkGlError("glUniformMatrix4fv");
+        GLES20.glLineWidth(5f);
+        int position = 0;
         // Draw the square
-        GLES20.glDrawElements(
-                GLES20.GL_TRIANGLES, drawOrder.length,
-                GLES20.GL_UNSIGNED_SHORT, drawListBuffer);
+        GLES20.glDrawArrays(
+                GLES20.GL_LINE_LOOP, 0, 360);
         // Disable vertex array
         GLES20.glDisableVertexAttribArray(mPositionHandle);
     }

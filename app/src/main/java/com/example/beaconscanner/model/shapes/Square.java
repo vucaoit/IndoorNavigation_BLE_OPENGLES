@@ -1,4 +1,4 @@
-package com.example.beaconscanner.model;
+package com.example.beaconscanner.model.shapes;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -8,6 +8,10 @@ import java.nio.ShortBuffer;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.util.Log;
+
+import com.example.beaconscanner.model.Point;
+import com.example.beaconscanner.utils.ColorUntil;
+import com.example.beaconscanner.utils.CoordinateCaculator;
 
 /**
  * A two-dimensional square for use as a drawn object in OpenGL ES 2.0.
@@ -39,26 +43,46 @@ public class Square {
     // number of coordinates per vertex in this array
     public float[] mModelMatrix = new float[16];
     static final int COORDS_PER_VERTEX = 3;
-    public float distance = 0f;
-    float squareCoords[] = {
-            -0.1f + distance, 0.1f + distance, 0f,   // top left
-            -0.1f + distance, -0.1f + distance, 0f,   // bottom left
-            0.1f + distance, -0.1f + distance, 0f,   // bottom right
-            0.1f + distance, 0.1f + distance, 0f}; // top right
-    private final short drawOrder[] = {0, 1, 2, 0, 2, 3}; // order to draw vertices
+    public float size;
+    float squareCoords[]; // top right
+    private final short drawOrder[] = {0, 1, 2,
+            0, 2, 3,
+            0, 4, 1,
+            1, 4, 2,
+            2, 4, 3,
+            3, 4, 0
+    }; // order to draw vertices
     private final int vertexStride = COORDS_PER_VERTEX * 4; // 4 bytes per vertex
     float color[] = {0.2f, 0.709803922f, 0.898039216f, 1.0f};
+    private Point A;
+    private Point B;
+    private Point C;
+    private Point D;
+    private Point O = new Point(0f, 0f);
+    private Point middle = new Point(0f,0f);
 
     /**
      * Sets up the drawing object data for use in an OpenGL ES context.
      */
-    public Square(float[] color1) {
-//        squareCoords = new float[]{
-//                -0.1f + distance, 0.1f + distance, 0f,   // top left
-//                -0.1f + distance, -0.1f + distance, 0f,   // bottom left
-//                0.1f + distance, -0.1f + distance, 0f,   // bottom right
-//                0.1f + distance, 0.1f + distance, 0f};
-        color = color1;
+    public Square(float x, float y, float size,float[] color) {
+        this.color = color;
+        middle.setX(x);
+        middle.setY(y);
+        this.size = size;
+        Point middlePoint = new Point(x, y);
+        float R = (float) (size * Math.sqrt(2)) / 2;
+        A = new Point(x - this.size / 2, y + this.size / 2);
+        B = CoordinateCaculator.INSTANCE.circleXY(middlePoint, R, 225f);
+        C = CoordinateCaculator.INSTANCE.circleXY(middlePoint, R, 225f - 90);
+        D = CoordinateCaculator.INSTANCE.circleXY(middlePoint, R, 225f - 180);
+        squareCoords = new float[]{
+                //x,    y
+//                // square
+                A.getX(), A.getY(), 0f,// top left
+                B.getX(), B.getY(), 0f,// bottom left
+                C.getX(), C.getY(), 0f,// bottom right
+                D.getX(), D.getY(), 0f,// top right
+        };
         Matrix.setIdentityM(mModelMatrix, 0);
         // initialize vertex byte buffer for shape coordinates
         ByteBuffer bb = ByteBuffer.allocateDirect(
@@ -66,8 +90,8 @@ public class Square {
                 squareCoords.length * 4);
         bb.order(ByteOrder.nativeOrder());
         vertexBuffer = bb.asFloatBuffer();
-//        vertexBuffer.put(squareCoords);
-//        vertexBuffer.position(0);
+        vertexBuffer.put(squareCoords);
+        vertexBuffer.position(0);
         // initialize byte buffer for the draw list
         ByteBuffer dlb = ByteBuffer.allocateDirect(
                 // (# of coordinate values * 2 bytes per short)
@@ -89,14 +113,34 @@ public class Square {
         GLES20.glLinkProgram(mProgram);                  // create OpenGL program executables
     }
 
-    public void draw(float[] mvpMatrix, float distance) {
+    public void setPositionByCoordinate(Point coordinate) {
+        middle = coordinate;
+        float R = (float) (size * Math.sqrt(2)) / 2;
+        A = new Point(middle.getX() - this.size / 2, middle.getY() + this.size / 2);
+        B = CoordinateCaculator.INSTANCE.circleXY(middle, R, 225f);
+        C = CoordinateCaculator.INSTANCE.circleXY(middle, R, 225f - 90);
+        D = CoordinateCaculator.INSTANCE.circleXY(middle, R, 225f - 180);
         squareCoords = new float[]{
-                -0.1f + distance, 0.1f + distance, 0f,   // top left
-                -0.1f + distance, -0.1f + distance, 0f,   // bottom left
-                0.1f + distance, -0.1f + distance, 0f,   // bottom right
-                0.1f + distance, 0.1f + distance, 0f};
+                //x,    y
+//                // square
+                A.getX(), A.getY(), 0f,// top left
+                B.getX(), B.getY(), 0f,// bottom left
+                C.getX(), C.getY(), 0f,// bottom right
+                D.getX(), D.getY(), 0f,// top right
+        };
         vertexBuffer.put(squareCoords);
         vertexBuffer.position(0);
+    }
+
+    public Point getPosition() {
+        return middle;
+    }
+
+    public void setColor(float[] color) {
+        GLES20.glUniform4fv(mColorHandle, 1, color, 0);
+    }
+
+    public void draw(float[] mvpMatrix) {
         // Add program to OpenGL environment
         GLES20.glUseProgram(mProgram);
         // get handle to vertex shader's vPosition member
@@ -118,10 +162,11 @@ public class Square {
         // Apply the projection and view transformation
         GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, mvpMatrix, 0);
         checkGlError("glUniformMatrix4fv");
+        GLES20.glLineWidth(5f);
+        int position = 0;
         // Draw the square
-        GLES20.glDrawElements(
-                GLES20.GL_TRIANGLES, drawOrder.length,
-                GLES20.GL_UNSIGNED_SHORT, drawListBuffer);
+        GLES20.glDrawArrays(
+                GLES20.GL_TRIANGLE_FAN, 0, 4);
         // Disable vertex array
         GLES20.glDisableVertexAttribArray(mPositionHandle);
     }

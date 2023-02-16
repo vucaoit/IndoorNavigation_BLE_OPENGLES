@@ -1,4 +1,4 @@
-package com.example.beaconscanner.model;
+package com.example.beaconscanner.model.shapes;
 
 /**
  * Created by Seker on 7/2/2015.
@@ -15,7 +15,9 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
 import android.opengl.GLES30;
-import android.util.Log;import com.example.beaconscanner.opengl.MyGLRenderer;
+import android.util.Log;
+
+import com.example.beaconscanner.ShaderUtil;
 
 public class Cube {
     private int mProgramObject;
@@ -24,7 +26,7 @@ public class Cube {
     private FloatBuffer mVertices;
 
     //initial size of the cube.  set here, so it is easier to change later.
-    float size = 0.4f;
+    float size = 1f;
 
     //this is the initial data, which will need to translated into the mVertices variable in the consturctor.
     float[] mVerticesData = new float[]{
@@ -148,8 +150,8 @@ public class Cube {
         int[] linked = new int[1];
 
         // Load the vertex/fragment shaders
-        vertexShader = MyGLRenderer.Companion.loadShader(GLES30.GL_VERTEX_SHADER, vShaderStr);
-        fragmentShader = MyGLRenderer.Companion.loadShader(GLES30.GL_FRAGMENT_SHADER, fShaderStr);
+        vertexShader = ShaderUtil.loadShader(GLES30.GL_VERTEX_SHADER, vShaderStr);
+        fragmentShader = ShaderUtil.loadShader(GLES30.GL_FRAGMENT_SHADER, fShaderStr);
 
         // Create the program object
         programObject = GLES30.glCreateProgram();
@@ -216,31 +218,31 @@ public class Cube {
 
         //draw front face
         GLES30.glUniform4fv(mColorHandle, 1, colors[0], 0);
-        GLES30.glDrawArrays(GLES30.GL_TRIANGLES,startPos,verticesPerface);
+        GLES30.glDrawArrays(GLES30.GL_LINE_LOOP,startPos,verticesPerface);
         startPos += verticesPerface;
 
         //draw back face
         GLES30.glUniform4fv(mColorHandle, 1, colors[1], 0);
-        GLES30.glDrawArrays(GLES30.GL_TRIANGLES, startPos, verticesPerface);
+        GLES30.glDrawArrays(GLES30.GL_LINE_LOOP, startPos, verticesPerface);
         startPos += verticesPerface;
 
         //draw left face
         GLES30.glUniform4fv(mColorHandle, 1, colors[2], 0);
-        GLES30.glDrawArrays(GLES30.GL_TRIANGLES,startPos,verticesPerface);
+        GLES30.glDrawArrays(GLES30.GL_LINE_LOOP,startPos,verticesPerface);
         startPos += verticesPerface;
 
         //draw right face
         GLES30.glUniform4fv(mColorHandle, 1, colors[3], 0);
-        GLES30.glDrawArrays(GLES30.GL_TRIANGLES,startPos,verticesPerface);
+        GLES30.glDrawArrays(GLES30.GL_LINE_LOOP,startPos,verticesPerface);
         startPos += verticesPerface;
 
         //draw top face
-        GLES30.glDrawArrays(GLES30.GL_TRIANGLES,startPos,verticesPerface);
+        GLES30.glDrawArrays(GLES30.GL_LINE_LOOP,startPos,verticesPerface);
         startPos += verticesPerface;
 
         //draw bottom face
         GLES30.glUniform4fv(mColorHandle, 1, colors[5], 0);
-        GLES30.glDrawArrays(GLES30.GL_TRIANGLES,startPos,verticesPerface);
+        GLES30.glDrawArrays(GLES30.GL_LINE_LOOP,startPos,verticesPerface);
         //last face, so no need to increment.
 
     }

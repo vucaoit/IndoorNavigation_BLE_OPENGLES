@@ -1,10 +1,11 @@
-package com.example.beaconscanner
+package com.example.beaconscanner.model
+
+import kotlin.math.pow
 
 class Beacon(mac: String?) {
     enum class beaconType {
         iBeacon, eddystoneUID, any
     }
-
     val macAddress = mac
     var manufacturer: String? = null
     var type: beaconType = beaconType.any
@@ -23,9 +24,14 @@ class Beacon(mac: String?) {
 
         return true
     }
-
+    fun beaconToDistance(measuredPower:Int,N:Float):Float{
+        return 10.0.pow((measuredPower - rssi!!*1.0)/(10 * N)).toFloat()
+    }
     override fun hashCode(): Int {
         return macAddress?.hashCode() ?: 0
     }
 
+    override fun toString(): String {
+        return "${macAddress},${uuid},${major},${minor},${rssi}\n"
+    }
 }

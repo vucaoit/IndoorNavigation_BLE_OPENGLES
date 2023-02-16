@@ -1,6 +1,7 @@
-package com.example.beaconscanner
+package com.example.beaconscanner.views.beacon
 
 import android.Manifest
+import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
 import android.app.AlertDialog
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
@@ -8,42 +9,37 @@ import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.content.Context
-import android.content.Context.SENSOR_SERVICE
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.os.ParcelUuid
 import android.util.Log
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.Fragment
-import com.example.beaconscanner.components.JoystickView
-import com.example.beaconscanner.databinding.FragmentScannerBinding
-import com.example.beaconscanner.model.Point
-import com.example.beaconscanner.utils.CoordinateCaculator
+import com.example.beaconscanner.databinding.ActivityBeaconScannerBinding
+import com.example.beaconscanner.model.Beacon
 import com.example.beaconscanner.utils.Utils
+import java.io.*
+import java.text.DecimalFormat
+import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.math.*
+import kotlin.math.pow
 
 
-class ScannerFragment : Fragment(), SensorEventListener {
-    private lateinit var binding : FragmentScannerBinding
+class BeaconScannerActivity : AppCompatActivity() {
+    private lateinit var binding: ActivityBeaconScannerBinding
+    private var isStart = false;
     private var max = 0;
     private var min = 0;
-    private var degreePrevous = 0f
-    private lateinit var sensorManager: SensorManager
-    private var angle = 0f
-    private var distances = arrayListOf<Float>()
+    private val beacon1 = "FDA50693A4E24FB1AFCFC6EB07647825"
+    private var timeStart: Calendar? = null
+    private var isWriting = false
     private var requestBluetooth =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == 1) {
@@ -80,39 +76,15 @@ class ScannerFragment : Fragment(), SensorEventListener {
     private var btManager: BluetoothManager? = null
     private var btAdapter: BluetoothAdapter? = null
     private var btScanner: BluetoothLeScanner? = null
-    private var x = 0f
-    private var y = 0f
     val eddystoneServiceId: ParcelUuid =
         ParcelUuid.fromString("0000FEAA-0000-1000-8000-00805F9B34FB")
-    private var isStart = false
+
 
     @RequiresApi(Build.VERSION_CODES.N)
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-        binding = FragmentScannerBinding.inflate(inflater,container,false);
-        initViews()
-        // 1
-        sensorManager = requireActivity().getSystemService(SENSOR_SERVICE) as SensorManager
-// 2
-        sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)?.also { accelerometer ->
-            sensorManager.registerListener(
-                this,
-                accelerometer,
-                SensorManager.SENSOR_DELAY_NORMAL,
-                SensorManager.SENSOR_DELAY_UI
-            )
-        }
-// 3
-        sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)?.also { magneticField ->
-            sensorManager.registerListener(
-                this,
-                magneticField,
-                SensorManager.SENSOR_DELAY_NORMAL,
-                SensorManager.SENSOR_DELAY_UI
-            )
-        }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityBeaconScannerBinding.inflate(layoutInflater)
+        setContentView(binding.root)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             requestMultiplePermissions.launch(
                 arrayOf(
@@ -132,40 +104,36 @@ class ScannerFragment : Fragment(), SensorEventListener {
             )
         }
         setUpBluetoothManager()
-        return binding.root
-    }
+        binding.apply {
+            btnScanner.setOnClickListener {
+                if (!isStart) {
+                    btnScanner.text = "STOP"
+                    onStartScannerButtonClick()
 
-    companion object {
-        private const val REQUEST_ENABLE_BT = 1
-        private const val PERMISSION_REQUEST_COARSE_LOCATION = 1
-    }
-
-    override fun onPause() {
-        super.onPause()
-        sensorManager.unregisterListener(this);
-    }
-
-    override fun onResume() {
-        super.onResume()
-        sensorManager.registerListener(
-            this, sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION),
-            SensorManager.SENSOR_DELAY_GAME
-        );
-    }
-
-    private fun initViews() {
-        binding.joyStick.setOnJoystickMoveListener({ angle, _, _ ->
-            binding.myGLSurfaceView.apply {
-                setAngle(angle.toFloat())
-                setTarget(angle.toFloat(),0.05f)
-                requestRender()
+                } else {
+                    btnScanner.text = "START"
+                    onStopScannerButtonClick()
+                }
+                isStart = !isStart
             }
-//            Log.d("ANGLE","$angle")
-        }, JoystickView.DEFAULT_LOOP_INTERVAL)
+            btnCatchData.setOnClickListener {
+                if (!isWriting) {
+                    Toast.makeText(applicationContext, "catching data", Toast.LENGTH_SHORT).show()
+                    btnCatchData.text = "Recording"
+                    timeStart = Calendar.getInstance()
+                } else {
+                    Toast.makeText(applicationContext, "saved", Toast.LENGTH_SHORT).show()
+                    btnCatchData.text = "Catch"
+                    timeStart = null
+                }
+                isWriting = !isWriting
+            }
+        }
     }
+
     private fun onStartScannerButtonClick() {
         if (ActivityCompat.checkSelfPermission(
-                requireContext().applicationContext,
+                this.applicationContext,
                 Manifest.permission.BLUETOOTH_SCAN
             ) != PackageManager.PERMISSION_GRANTED
         ) {
@@ -174,24 +142,24 @@ class ScannerFragment : Fragment(), SensorEventListener {
         } else {
         }
         if (ContextCompat.checkSelfPermission(
-                requireContext(),
+                this,
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             ActivityCompat.requestPermissions(
-                requireActivity(),
+                this,
                 arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
                 0
             )
         } else {
-
+//            timeStart = Calendar.getInstance()
             btScanner?.startScan(leScanCallback)
         }
     }
 
     private fun onStopScannerButtonClick() {
         if (ActivityCompat.checkSelfPermission(
-                requireContext().applicationContext,
+                this.applicationContext,
                 Manifest.permission.BLUETOOTH_SCAN
             ) != PackageManager.PERMISSION_GRANTED
         ) {
@@ -199,11 +167,13 @@ class ScannerFragment : Fragment(), SensorEventListener {
             return
         }
         btScanner!!.stopScan(leScanCallback)
+        timeStart = null
     }
+
 
     @RequiresApi(Build.VERSION_CODES.M)
     private fun setUpBluetoothManager() {
-        btManager = activity?.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        btManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         btAdapter = btManager!!.adapter
         btScanner = btAdapter?.bluetoothLeScanner
         if (btAdapter != null && !btAdapter!!.isEnabled) {
@@ -216,15 +186,15 @@ class ScannerFragment : Fragment(), SensorEventListener {
     @RequiresApi(Build.VERSION_CODES.M)
     private fun checkForLocationPermission() {
         // Make sure we have access coarse location enabled, if not, prompt the user to enable it
-        if (requireActivity().checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            val builder = AlertDialog.Builder(activity)
+        if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            val builder = AlertDialog.Builder(this)
             builder.setTitle("This app needs location access")
             builder.setMessage("Please grant location access so this app can detect  peripherals.")
             builder.setPositiveButton(android.R.string.ok, null)
             builder.setOnDismissListener {
                 requestPermissions(
-                    arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION),
-                    PERMISSION_REQUEST_COARSE_LOCATION
+                    arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, WRITE_EXTERNAL_STORAGE),
+                    PERMISSION_REQUEST_COARSE_LOCATION,
                 )
             }
             builder.show()
@@ -235,12 +205,13 @@ class ScannerFragment : Fragment(), SensorEventListener {
         requestCode: Int,
         permissions: Array<String>, grantResults: IntArray
     ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         when (requestCode) {
             PERMISSION_REQUEST_COARSE_LOCATION -> {
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     println("coarse location permission granted")
                 } else {
-                    val builder = AlertDialog.Builder(activity)
+                    val builder = AlertDialog.Builder(this)
                     builder.setTitle("Functionality limited")
                     builder.setMessage("Since location access has not been granted, this app will not be able to discover BLE beacons")
                     builder.setPositiveButton(android.R.string.ok, null)
@@ -257,40 +228,16 @@ class ScannerFragment : Fragment(), SensorEventListener {
             val scanRecord = result.scanRecord
             val beacon = Beacon(result.device.address)
             if (ActivityCompat.checkSelfPermission(
-                    requireContext(),
+                    this@BeaconScannerActivity,
                     Manifest.permission.BLUETOOTH_CONNECT
                 ) != PackageManager.PERMISSION_GRANTED
             ) {
-
                 return
             }
             beacon.manufacturer = result.device.name
             beacon.rssi = result.rssi
             if (scanRecord != null) {
-                val serviceUuids = scanRecord.serviceUuids
                 val iBeaconManufactureData = scanRecord.getManufacturerSpecificData(0X004c)
-
-                if (serviceUuids != null && serviceUuids.size > 0 && serviceUuids.contains(
-                        eddystoneServiceId
-                    )
-                ) {
-                    val serviceData = scanRecord.getServiceData(eddystoneServiceId)
-
-                    if (serviceData != null && serviceData.size >= 18) {
-                        val eddystoneUUID =
-                            Utils.toHexString(Arrays.copyOfRange(serviceData, 2, 18))
-                        val namespace = String(eddystoneUUID.toCharArray().sliceArray(0..19))
-                        val instance = String(
-                            eddystoneUUID.toCharArray()
-                                .sliceArray(20 until eddystoneUUID.toCharArray().size)
-                        )
-                        beacon.type = Beacon.beaconType.eddystoneUID
-                        beacon.namespace = namespace
-                        beacon.instance = instance
-
-//                        Log.e("EddyStone", "Namespace:$namespace Instance:$instance")
-                    }
-                }
                 if (iBeaconManufactureData != null && iBeaconManufactureData.size >= 23) {
                     val iBeaconUUID = Utils.toHexString(iBeaconManufactureData.copyOfRange(2, 18))
                     val major = Integer.parseInt(
@@ -314,37 +261,23 @@ class ScannerFragment : Fragment(), SensorEventListener {
                     beacon.uuid = iBeaconUUID
                     beacon.major = major
                     beacon.minor = minor
-//                    Log.e(
-//                        "IBeacon",
-//                        "iBeaconUUID:$iBeaconUUID major:$major minor:$minor rssi:${beacon.rssi}, distance : "
-//                    )
-                    if (iBeaconUUID == "FDA50693A4E24FB1AFCFC6EB07647825") {
-                        val MeasurePower = -69
-                        val N = 2
-                        val x = (10.0.pow((MeasurePower - beacon.rssi!!) / (10.0 * N)))
-                        if (distances.size > 2) {
-                            var avg = 0.0f;
-                            for (item in distances) {
-                                avg += item
-                            }
-                            avg /= distances.size
-                            binding.apply {
-                                myGLSurfaceView.setTranlate(avg)
-                                myGLSurfaceView.requestRender()
-//                                distance.text = "Distance : $x \nRssi : ${beacon.rssi!!}"
-                            }
-//                            Log.e("DISTANCE","$avg")
-                            distances.clear()
-
-                        } else {
-                            distances.add(x.toFloat())
+                    if (iBeaconUUID == beacon1 && major == 10010) {
+                        Log.d("RSSI", "${beacon.rssi}")
+                        val fileName = "BeaconTesting"
+                        if (isWriting) {
+                            writeFile(
+                                fileName,
+                                "" + binding.edtMetter.text + "," + binding.edtTxpower.text + "," + binding.edtAdvinterval.text + "," + countTime() + "," + beacon.toString(),
+                                true
+                            )
                         }
-
-//                        Log.e(
-//                            "IBeacon",
-//                            "iBeaconUUID:$iBeaconUUID major:$major minor:$minor rssi:${beacon.rssi}, distance : ${x}"
-//                        )
-
+                        val measuaredPower = -57
+                        val N = 4.0
+                        val distance =
+                            Math.pow(10.0, (measuaredPower - beacon.rssi!!) / (10.0 * N)).format(2)
+                        Log.d("DISTANCE", "$distance")
+                        binding.txtBeacnInfo.text =
+                            "time : ${countTime()}\nmacAdd : ${beacon.macAddress}\nuuid : ${beacon.uuid}\nmajor : ${beacon.major}\nminor : ${beacon.minor}\nrssi : ${beacon.rssi}\ndistance : ${distance}"
                         if (min == 0 || max == 0) {
                             min = beacon.rssi!!
                             max = beacon.rssi!!
@@ -356,26 +289,59 @@ class ScannerFragment : Fragment(), SensorEventListener {
             }
         }
 
+        fun Double.format(digits: Int) = "%.${digits}f".format(this)
+        fun countTime(): String {
+            if (timeStart != null) {
+                val time = Calendar.getInstance().timeInMillis - timeStart!!.timeInMillis
+                return "${time / 1000}s${formatNumber((time % 1000).toInt())}"
+            }
+            return "0s0"
+        }
+
+        fun formatNumber(number: Int): String {
+            return if (number < 10) {
+                "00${number}"
+            } else {
+                if (number >= 10 && number < 100) {
+                    "0${number}"
+                } else {
+                    number.toString()
+                }
+            }
+        }
+
+        fun writeFile(fileName: String, fileData: String, append: Boolean) {
+
+            val file = File(filesDir, "/${fileName}.txt")
+
+            var fos: FileOutputStream? = null
+
+            try {
+                fos = FileOutputStream(file, append)
+
+                // Writes bytes from the specified byte array to this file output stream
+                fos.write(fileData.toByteArray())
+            } catch (e: FileNotFoundException) {
+                println("File not found$e")
+            } catch (ioe: IOException) {
+                println("Exception while writing file $ioe")
+            } finally {
+                // close the streams using close method
+                try {
+                    fos?.close()
+                } catch (ioe: IOException) {
+                    println("Error while closing stream: $ioe")
+                }
+            }
+        }
+
         override fun onScanFailed(errorCode: Int) {
             Log.e("DINKAR", errorCode.toString())
         }
     }
 
-    override fun onSensorChanged(event: SensorEvent?) {
-        val degree = event!!.values[0].roundToInt().toFloat() + 95f
-        if (degree > 0 && abs((degreePrevous - degree)) < 20) {
-//            Log.d("Degree", "$degree")
-////            angle = degree
-//            binding.apply {
-//                myGLSurfaceView.setAngle(degree)
-////            myGLSurfaceView.setTargetCoordinate(getPointByDistanceAndAngle(Point(1f,1f),0.001f,degree))
-//                myGLSurfaceView.requestRender()
-//            }
-        }
-        degreePrevous = degree
-    }
-
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
-
+    companion object {
+        private const val REQUEST_ENABLE_BT = 1
+        private const val PERMISSION_REQUEST_COARSE_LOCATION = 1
     }
 }

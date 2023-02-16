@@ -1,25 +1,34 @@
-package com.example.beaconscanner.model
+package com.example.beaconscanner.model.shapes
 
-import android.content.Context
-import android.graphics.BitmapFactory
 import android.opengl.GLES20
-import android.opengl.GLUtils
-import android.view.TextureView
-import com.example.beaconscanner.ShaderUtil
-import com.example.beaconscanner.opengl.MyGLRenderer
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
+import java.nio.ShortBuffer
 
 // number of coordinates per vertex in this array
 
 
 class Triangle {
     val COORDS_PER_VERTEX = 3
-    var triangleCoords = floatArrayOf(     // in counterclockwise order:
-        0.0f, 0.622008459f, 0.0f,      // top
-        -0.5f, -0.311004243f, 0.0f,    // bottom left
-        0.5f, -0.311004243f, 0.0f      // bottom right
+    var triangleCoords = floatArrayOf(
+        // in counterclockwise order:
+        0.0f, 0f, 0.0f,      // top
+        0f, 0.5f, 0.0f,    // bottom left
+        -0.433f, 0.25f, 0.0f,      // bottom right
+        -0.433f, -0.25f, 0f,
+        0f, -0.5f, 0f,
+        0.433f, -0.25f, 0f,
+        0.433f, 0.25f, 0f,
+    )
+    private lateinit var drawListBuffer: ShortBuffer
+    private val drawOrder = shortArrayOf(
+        0, 1, 2,
+        0, 2, 3,
+        0, 3, 4,
+        0, 4, 5,
+        0, 5, 6,
+        0, 6, 1
     )
     private val vertexShaderCode =
     // This matrix member variable provides a hook to manipulate
@@ -116,8 +125,29 @@ class Triangle {
             // Pass the projection and view transformation to the shader
             GLES20.glUniformMatrix4fv(vPMatrixHandle, 1, false, mvpMatrix, 0)
 
+            //        vertexBuffer.put(squareCoords);
+//        vertexBuffer.position(0);
+            // initialize vertex byte buffer for shape coordinates
+            val bb = ByteBuffer.allocateDirect( // (# of coordinate values * 4 bytes per float)
+                triangleCoords.size * 4
+            )
+            bb.order(ByteOrder.nativeOrder())
+            vertexBuffer = bb.asFloatBuffer()
+            // initialize byte buffer for the draw list
+            val dlb = ByteBuffer.allocateDirect( // (# of coordinate values * 2 bytes per short)
+                drawOrder.size * 2
+            )
+            dlb.order(ByteOrder.nativeOrder())
+            drawListBuffer = dlb.asShortBuffer()
+            drawListBuffer.put(drawOrder)
+            drawListBuffer.position(0)
             // Draw the triangle
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, vertexCount)
+            GLES20.glDrawElements(
+                GLES20.GL_TRIANGLES,
+                triangleCoords.size,
+                GLES20.GL_UNSIGNED_SHORT,
+                drawListBuffer
+            );
 
             // Disable vertex array
             GLES20.glDisableVertexAttribArray(it)

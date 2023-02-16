@@ -1,10 +1,9 @@
-package com.example.beaconscanner.model
+package com.example.beaconscanner.model.shapes
 
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.opengl.GLES20
 import android.opengl.GLUtils
-import android.opengl.Matrix
 import com.example.beaconscanner.ShaderUtil
 import java.io.IOException
 import java.nio.ByteBuffer

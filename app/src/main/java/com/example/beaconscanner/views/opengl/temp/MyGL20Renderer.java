@@ -1,11 +1,11 @@
-package com.example.beaconscanner.opengl;
+package com.example.beaconscanner.views.opengl.temp;
 
 import android.content.Context;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
 
-import com.example.beaconscanner.model.Sprite;
+import com.example.beaconscanner.model.shapes.Sprite;
 
 import javax.microedition.khronos.opengles.GL10;
 

@@ -1,6 +1,6 @@
 package com.example.beaconscanner.utils
 
-import com.example.beaconscanner.Beacon
+import com.example.beaconscanner.model.Beacon
 
 object Utils {
     val ALL = "all"
