@@ -3,9 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <data>
-
-    </data>
+    <data></data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -16,13 +14,112 @@
             android:id="@+id/myGLSurfaceView"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
-
+        <!--Tools-->
         <LinearLayout
+            android:id="@+id/ln_layout_tools"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#43111111"
+            android:orientation="horizontal"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <ImageButton
+                android:id="@+id/btn_tool_cancel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:backgroundTint="@android:color/transparent"
+                android:src="@drawable/ic_tool_cancel" />
+
+            <ImageButton
+                android:id="@+id/btn_tool_map"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:backgroundTint="@android:color/transparent"
+                android:src="@drawable/ic_tool_map" />
+
+            <ImageButton
+                android:id="@+id/btn_tool_adjust"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:backgroundTint="@android:color/transparent"
+                android:src="@drawable/ic_tool_adjust" />
+
+            <ImageButton
+                android:id="@+id/btn_tool_beacon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:backgroundTint="@android:color/transparent"
+                android:src="@drawable/ic_tool_beacon" />
+            <ImageButton
+                android:id="@+id/btn_tool_move_and_zoom"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:backgroundTint="@android:color/transparent"
+                android:src="@drawable/ic_tool_move" />
+        </LinearLayout>
+        <!--        Draw map-->
+        <LinearLayout
+            android:id="@+id/ln_layout_draw_map"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#43111111"
+            android:orientation="horizontal"
+            app:layout_constraintTop_toBottomOf="@+id/ln_layout_tools"
+            tools:visibility="gone">
+
+            <ImageButton
+                android:id="@+id/btn_map_undo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:backgroundTint="@android:color/transparent"
+                android:src="@drawable/ic_tools_map_undo" />
+
+            <ImageButton
+                android:id="@+id/btn_map_fill"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:backgroundTint="@android:color/transparent"
+                android:src="@drawable/ic_tool_map_fill" />
+
+            <ImageButton
+                android:id="@+id/btn_map_outline"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:backgroundTint="@android:color/transparent"
+                android:src="@drawable/ic_tool_map_outline" />
+
+            <ImageButton
+                android:id="@+id/btn_map_pin"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:backgroundTint="@android:color/transparent"
+                android:src="@drawable/ic_tool_map_point" />
+        </LinearLayout>
+        <!--        setup beacon-->
+        <LinearLayout
+            android:id="@+id/ln_layout_setup_beacon"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:id="@+id/ln"
-            app:layout_constraintTop_toTopOf="parent">
+            android:background="#43111111"
+            app:layout_constraintTop_toBottomOf="@+id/ln_layout_tools"
+            tools:visibility="gone">
+
+            <Button
+                android:id="@+id/btn_start"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Start" />
 
             <Button
                 android:id="@+id/btn_beacon1"
@@ -30,7 +127,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:backgroundTint="@android:color/holo_red_dark"
-                android:text="Beacon 1" />
+                android:text="BC1" />
 
             <Button
                 android:id="@+id/btn_beacon2"
@@ -38,7 +135,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:backgroundTint="@android:color/holo_green_dark"
-                android:text="Beacon 2" />
+                android:text="BC2" />
 
             <Button
                 android:id="@+id/btn_beacon3"
@@ -46,35 +143,83 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:backgroundTint="@android:color/holo_blue_dark"
-                android:text="Beacon 3" />
+                android:text="BC3" />
         </LinearLayout>
-        <com.google.android.material.slider.Slider
+<!--Adjust layout-->
+        <LinearLayout
+            android:id="@+id/ln_layout_adjust"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:id="@+id/slider"
-            app:layout_constraintTop_toBottomOf="@+id/ln"
-            app:layout_constraintBottom_toTopOf="@+id/btn_start"
-            android:layout_marginVertical="10dp"
-            android:valueFrom="-70"
-            android:stepSize="1"
-            android:valueTo="-50"
-            />
-        <Button
-            android:layout_width="wrap_content"
+            android:orientation="vertical"
+            android:background="#43111111"
+            tools:visibility="gone"
+            app:layout_constraintTop_toBottomOf="@id/ln_layout_tools">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="30dp"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:text="N"
+                    android:textAlignment="center"
+                    android:textStyle="bold" />
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/slider_n"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:valueFrom="2"
+                    android:value="3"
+                    android:valueTo="4" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="30dp"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:text="MP"
+                    android:textAlignment="center"
+                    android:textStyle="bold" />
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/slider_mp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:valueFrom="-70"
+                    android:stepSize="1"
+                    android:value="-58"
+                    android:valueTo="-50" />
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:id="@+id/btn_start"
-            android:text="Start"
-            app:layout_constraintTop_toBottomOf="@id/slider"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            />
+            android:id="@+id/ln_layout_move_and_zoom"
+            app:layout_constraintTop_toBottomOf="@+id/ln_layout_tools"
+            android:background="#43111111"
+            android:orientation="horizontal">
+            <com.google.android.material.slider.Slider
+                android:id="@+id/slider_zoom"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:valueFrom="0"
+                android:value="0.3"
+                android:valueTo="5" />
+        </LinearLayout>
         <com.example.beaconscanner.components.JoystickView
+            android:id="@+id/joyStick"
             android:layout_width="200dp"
             android:layout_height="200dp"
-            android:id="@+id/joyStick"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            />
+            app:layout_constraintStart_toStartOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

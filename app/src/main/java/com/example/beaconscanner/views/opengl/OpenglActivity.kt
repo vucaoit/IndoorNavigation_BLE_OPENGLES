@@ -14,18 +14,15 @@ import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
-import android.view.MotionEvent
 import android.view.View
-import android.view.View.OnTouchListener
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.beaconscanner.components.JoystickView
-import com.example.beaconscanner.components.JoystickView.OnJoystickMoveListener
+import com.example.beaconscanner.controller.ToolController
 import com.example.beaconscanner.databinding.ActivityOpenglBinding
 import com.example.beaconscanner.model.Beacon
-import com.example.beaconscanner.model.Point
 import com.example.beaconscanner.utils.CoordinateCaculator
 import com.example.beaconscanner.utils.Utils
 import com.google.android.material.slider.Slider
@@ -49,6 +46,8 @@ class OpenglActivity : AppCompatActivity() {
     private var arrRssi1 = ArrayList<Float>()
     private var arrRssi2 = ArrayList<Float>()
     private var arrRssi3 = ArrayList<Float>()
+    private val toolController = ToolController()
+    var N = 3f
     var measuaredPower = -58
 
     private var requestBluetooth =
@@ -93,6 +92,62 @@ class OpenglActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityOpenglBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        hideAllTools()
+        //tool selected
+        binding.apply {
+            btnToolBeacon.setOnClickListener {
+                hideAllTools()
+                toolController.mode = ToolController.MOVE_BEACON
+                myGLSurfaceView.setMode(ToolController.MOVE_BEACON)
+                lnLayoutSetupBeacon.visibility = View.VISIBLE
+                joyStick.visibility = View.VISIBLE
+            }
+            btnToolAdjust.setOnClickListener {
+                hideAllTools()
+                toolController.mode = ToolController.ADJUST_BEACON
+                myGLSurfaceView.setMode(ToolController.ADJUST_BEACON)
+                lnLayoutAdjust.visibility = View.VISIBLE
+                joyStick.visibility = View.GONE
+            }
+            btnToolMap.setOnClickListener {
+                hideAllTools()
+                toolController.mode = ToolController.DRAW_MAP
+                myGLSurfaceView.setMode(ToolController.DRAW_MAP)
+                lnLayoutDrawMap.visibility = View.VISIBLE
+                joyStick.visibility = View.VISIBLE
+            }
+            btnToolMoveAndZoom.setOnClickListener {
+                hideAllTools()
+                toolController.mode = ToolController.MOVE_AND_ZOOM
+                myGLSurfaceView.setMode(ToolController.MOVE_AND_ZOOM)
+                lnLayoutMoveAndZoom.visibility = View.VISIBLE
+                joyStick.visibility = View.VISIBLE
+            }
+            btnToolCancel.setOnClickListener {
+                hideAllTools()
+            }
+        }
+        //draw map controller
+        binding.apply {
+            btnMapPin.setOnClickListener {
+                myGLSurfaceView.openGLRender.apply {
+                    if (map.points.size < 1) {
+                        map.addPoint(drawer.position)
+                        map.addPoint(drawer.position)
+                    } else {
+                        map.addPoint(drawer.position)
+                    }
+                }
+            }
+            btnMapUndo.setOnClickListener {
+                myGLSurfaceView.openGLRender.apply {
+                    map.removeLastPoint()
+                    map.points[map.points.size - 1] = drawer.position
+                    map.resetMap()
+                }
+            }
+        }
+        //beacon mode selected
         binding.apply {
             btnBeacon1.setOnClickListener {
                 isBeacon1Clicked = true
@@ -109,57 +164,118 @@ class OpenglActivity : AppCompatActivity() {
                 isBeacon2Clicked = false
                 isBeacon3Clicked = true
             }
-            joyStick.setOnJoystickMoveListener(object : OnJoystickMoveListener {
-                override fun onValueChanged(angle: Int, power: Int, direction: Int) {
-                    println(power)
-                    speed = 0.0008f * power
-                    if (isBeacon1Clicked) {
-                        val position = myGLSurfaceView.beacon1GetPosition()
-                        val newPosition =
-                            CoordinateCaculator.circleXY(position, speed, angle * 1.0f)
-                        myGLSurfaceView.beacon1SetPosition(newPosition)
-                        println(newPosition)
-                    } else {
-                        if (isBeacon2Clicked) {
-                            val position = myGLSurfaceView.beacon2GetPosition()
-                            val newPosition =
-                                CoordinateCaculator.circleXY(position, speed, angle * 1.0f)
-                            myGLSurfaceView.beacon2SetPosition(newPosition)
-                            println(newPosition)
-                        } else {
-                            val position = myGLSurfaceView.beacon3GetPosition()
-                            val newPosition =
-                                CoordinateCaculator.circleXY(position, speed, angle * 1.0f)
-                            myGLSurfaceView.beacon3SetPosition(newPosition)
-                            println(newPosition)
+            btnStart.setOnClickListener {
+                if (!isStart) {
+                    onStartScannerButtonClick()
+                    btnStart.text = "STOP"
+                } else {
+                    onStopScannerButtonClick()
+                    btnStart.text = "Start"
+                }
+                isStart = !isStart
+                myGLSurfaceView.openGLRender.beaconStart = isStart
+            }
+        }
+        //zoom mode
+        binding.apply {
+
+        }
+        binding.apply {
+            joyStick.setOnJoystickMoveListener({ angle, power, _ ->
+                speed = (0.0001f * power)/ myGLSurfaceView.openGLRender.zoom
+                when (toolController.mode) {
+                    ToolController.DRAW_MAP -> {
+                        myGLSurfaceView.openGLRender.apply {
+                            if (map.points.size > 1) {
+                                map.points[map.points.size - 1] = drawer.position
+                                map.resetMap()
+                                drawer.apply {
+                                    setPositionByCoordinate(
+                                        CoordinateCaculator.circleXY(
+                                            position,
+                                            speed,
+                                            angle * 1.0f
+                                        )
+                                    )
+                                }
+                            } else {
+                                drawer.apply {
+                                    setPositionByCoordinate(
+                                        CoordinateCaculator.circleXY(
+                                            position,
+                                            speed,
+                                            angle * 1.0f
+                                        )
+                                    )
+                                }
+                            }
                         }
                     }
-
+                    ToolController.MOVE_BEACON -> {
+                        if (isBeacon1Clicked) {
+                            val position = myGLSurfaceView.beacon1GetPosition()
+                            val newPosition =
+                                CoordinateCaculator.circleXY(position, speed, angle * 1.0f)
+                            myGLSurfaceView.beacon1SetPosition(newPosition)
+                            println(newPosition)
+                        } else {
+                            if (isBeacon2Clicked) {
+                                val position = myGLSurfaceView.beacon2GetPosition()
+                                val newPosition =
+                                    CoordinateCaculator.circleXY(position, speed, angle * 1.0f)
+                                myGLSurfaceView.beacon2SetPosition(newPosition)
+                                println(newPosition)
+                            } else {
+                                val position = myGLSurfaceView.beacon3GetPosition()
+                                val newPosition =
+                                    CoordinateCaculator.circleXY(position, speed, angle * 1.0f)
+                                myGLSurfaceView.beacon3SetPosition(newPosition)
+                                println(newPosition)
+                            }
+                        }
+                    }
+                    ToolController.MOVE_AND_ZOOM -> {
+                        myGLSurfaceView.openGLRender.apply {
+                            var alpha = angle
+                            when(angle){
+                                in 1..179->{
+                                    alpha = -(180-angle)
+                                }
+                                in -179..-1->{
+                                    alpha = (angle+180)
+                                }
+                            }
+                            tranlateCoordinate =
+                                CoordinateCaculator.circleXY(tranlateCoordinate, speed / 0.1f, alpha * 1f)
+                        }
+                    }
+                    else -> {
+                    }
                 }
             }, JoystickView.DEFAULT_LOOP_INTERVAL)
-            slider.addOnChangeListener(Slider.OnChangeListener { _, value, _ ->
-//                if (isBeacon1Clicked) {
-//                    myGLSurfaceView.setDistance1(value)
-//                } else {
-//                    if (isBeacon2Clicked) {
-//                        myGLSurfaceView.setDistance2(value)
-//                    } else {
-//                        myGLSurfaceView.setDistance3(value)
-//                    }
-//                }
+            sliderMp.addOnChangeListener(Slider.OnChangeListener { _, value, _ ->
                 measuaredPower = value.roundToInt()
+            })
+            sliderN.addOnChangeListener(Slider.OnChangeListener { _, value, _ ->
+                N = value
+            })
+            sliderZoom.addOnChangeListener(Slider.OnChangeListener { _, value, _ ->
+                if (value < 5) {
+                    myGLSurfaceView.openGLRender.zoom = value
+                }
             })
         }
         setUpBluetoothManager()
-        binding.btnStart.setOnClickListener {
-            if (!isStart) {
-                onStartScannerButtonClick()
-                binding.btnStart.text = "STOP"
-            } else {
-                onStopScannerButtonClick()
-                binding.btnStart.text = "Start"
-            }
-            isStart = !isStart
+
+    }
+
+    private fun hideAllTools() {
+        binding.apply {
+            lnLayoutSetupBeacon.visibility = View.GONE
+            lnLayoutDrawMap.visibility = View.GONE
+            lnLayoutAdjust.visibility = View.GONE
+            lnLayoutMoveAndZoom.visibility = View.GONE
+            joyStick.visibility = View.GONE
         }
     }
 
@@ -299,7 +415,6 @@ class OpenglActivity : AppCompatActivity() {
                     beacon.uuid = iBeaconUUID
                     beacon.major = major
                     beacon.minor = minor
-                    val N = 3
                     when (iBeaconUUID) {
                         beacon1 -> {
 

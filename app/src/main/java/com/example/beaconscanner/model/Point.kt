@@ -6,4 +6,7 @@ class Point(X:Float,Y:Float) {
     override fun toString(): String {
         return "($x,$y)"
     }
+    fun revert():Point{
+        return Point(-x,-y)
+    }
 }
