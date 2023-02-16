@@ -4,7 +4,6 @@ import android.content.Context
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
-import android.util.Log
 import com.example.beaconscanner.model.Point
 import com.example.beaconscanner.model.camera.CameraCenter
 import com.example.beaconscanner.model.camera.CameraEye
@@ -22,7 +21,7 @@ class OpenGLRender(context: Context) : GLSurfaceView.Renderer {
     @Volatile
     var ratio:Float = 0f
     @Volatile
-    var zoom:Float = 3f
+    var zoom:Float = 0.3f
     @Volatile
     var angle = 0f
     @Volatile
@@ -59,6 +58,7 @@ class OpenGLRender(context: Context) : GLSurfaceView.Renderer {
     private val projectionMatrix = FloatArray(16)
     private val viewMatrix = FloatArray(16)
     private val context: Context = context
+    private var lines:ArrayList<Line> = arrayListOf()
     //create model
     private lateinit var map: Demo
 
@@ -67,20 +67,21 @@ class OpenGLRender(context: Context) : GLSurfaceView.Renderer {
         // Set the background frame color
         GLES20.glClearColor(1f, 1f, 1f, 1f)
         // initialize a model
-//        for(x in -20..20){
-//            lines.add(Line(x.toFloat(),Line.HORIZONTAL, 10f/2))
-//        }
-//        for(y in -10..10){
-//            lines.add(Line(y.toFloat(),Line.VERTICAL, 20f/2))
-//        }
-        beacon1 = Square(0f,0f,0.02f,ColorUntil.RED)
-        beacon2 = Square(0f,0f,0.02f,ColorUntil.GREEN)
-        beacon3 = Square(0f,0f,0.02f,ColorUntil.BLUE)
-        person = Square(0f,0f,0.02f,ColorUntil.ORANGE)
+        for(x in -lineFrameSize..lineFrameSize){
+            lines.add(Line(x.toFloat(),Line.HORIZONTAL, lineFrameSize.toFloat()))
+        }
+        for(y in -lineFrameSize..lineFrameSize){
+            lines.add(Line(y.toFloat(),Line.VERTICAL, lineFrameSize.toFloat()))
+        }
+
+        beacon1 = Square(-0.53657126f,-0.42181498f,0.3f,ColorUntil.RED)
+        beacon2 = Square(-0.40882167f,-8.921436f,0.3f,ColorUntil.GREEN)
+        beacon3 = Square(1.7988465f,-9.421336f,0.3f,ColorUntil.BLUE)
+        person = Square(0f,0f,0.2f,ColorUntil.PINK)
         beacon1Circle = Circle(beacon1.position.x,beacon1.position.y,1f,ColorUntil.RED)
         beacon2Circle = Circle(beacon2.position.x,beacon2.position.y,1f,ColorUntil.GREEN)
         beacon3Circle = Circle(beacon3.position.x,beacon3.position.y,1f,ColorUntil.BLUE)
-        map = Demo(context,587f,801f,1f,"mapc302","png")
+        map = Demo(context,587f,801f,10f,"mapc302","png")
         unused.glEnableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
     }
 
@@ -96,6 +97,12 @@ class OpenGLRender(context: Context) : GLSurfaceView.Renderer {
         Matrix.translateM(vPMatrix,0,tranlateCoordinate.x,tranlateCoordinate.y,0f)
         //draw model
         map.draw(vPMatrix)
+        for (item in lines){
+            if(lines.indexOf(item) == 50 || lines.indexOf(item) == 151){
+                item.setColor(ColorUntil.VIOLET)
+            }
+            item.draw(vPMatrix)
+        }
         beacon1.draw(vPMatrix)
         beacon2.draw(vPMatrix)
         beacon3.draw(vPMatrix)
