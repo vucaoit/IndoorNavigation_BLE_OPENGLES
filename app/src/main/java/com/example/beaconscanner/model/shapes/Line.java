@@ -12,6 +12,7 @@ import android.util.Log;
 
 import com.example.beaconscanner.ShaderUtil;
 import com.example.beaconscanner.model.Point;
+import com.example.beaconscanner.utils.ColorUntil;
 
 /**
  * A two-dimensional square for use as a drawn object in OpenGL ES 2.0.
@@ -54,7 +55,7 @@ public class Line {
     private final int VertexStride = COORDS_PER_VERTEX * 4; // 4 bytes per vertex
 
     // Set color with red, green, blue and alpha (opacity) values
-    float color[] = {0f, 1f, 0f, 1.0f};
+    float color[] = ColorUntil.INSTANCE.getBLACK_03();
     private int orientation = 0;
     public void setColor(float[] color){
         this.color = color;
@@ -145,6 +146,7 @@ public class Line {
         GLES20.glUniformMatrix4fv(MVPMatrixHandle, 1, false, mvpMatrix, 0);
         checkGlError("glUniformMatrix4fv");
         // Draw the triangle
+        GLES20.glLineWidth(0.01f);
         GLES20.glDrawArrays(GLES20.GL_LINES, 0, VertexCount);
         // Disable vertex array
         GLES20.glDisableVertexAttribArray(PositionHandle);

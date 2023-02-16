@@ -10,9 +10,9 @@ import kotlin.math.sqrt
 
 class OpenGLSurfaceView(context: Context, attrs: AttributeSet) : GLSurfaceView(context, attrs) {
     private val openGLRender: OpenGLRender
-    private var prevousZoom = 3f
+    private var prevousZoom = 0.3f
     private var distanceAtStart = 0f
-    private var prevousPoint = Point(0f, 0f)
+    private var prevousPoint = Point(0.0f, 0.0f)
 
     init {
         setEGLContextClientVersion(2)
@@ -26,7 +26,7 @@ class OpenGLSurfaceView(context: Context, attrs: AttributeSet) : GLSurfaceView(c
         if (event.pointerCount == 1) {
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    prevousPoint = Point(0f, -0f)
+                    prevousPoint = Point(0.0f, -0.0f)
                     Log.d("Motion", "start")
                 }
                 MotionEvent.ACTION_MOVE -> {
@@ -139,15 +139,15 @@ class OpenGLSurfaceView(context: Context, attrs: AttributeSet) : GLSurfaceView(c
     }
 
     fun setDistance1(value: Float) {
-        openGLRender.distance1 = value
+        openGLRender.distance1 = value * RATIO_DISTANCE
     }
 
     fun setDistance2(value: Float) {
-        openGLRender.distance2 = value
+        openGLRender.distance2 = value * RATIO_DISTANCE
     }
 
     fun setDistance3(value: Float) {
-        openGLRender.distance3 = value
+        openGLRender.distance3 = value * RATIO_DISTANCE
     }
 
     private fun getDistance(event: MotionEvent): Float {
@@ -158,5 +158,6 @@ class OpenGLSurfaceView(context: Context, attrs: AttributeSet) : GLSurfaceView(c
 
     companion object {
         private const val TOUCH_SCALE_FACTOR: Float = 0.003F
+        private const val RATIO_DISTANCE = 0.9f //1square unit = 1 metter
     }
 }

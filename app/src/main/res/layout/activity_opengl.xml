@@ -48,12 +48,23 @@
                 android:backgroundTint="@android:color/holo_blue_dark"
                 android:text="Beacon 3" />
         </LinearLayout>
+        <com.google.android.material.slider.Slider
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/slider"
+            app:layout_constraintTop_toBottomOf="@+id/ln"
+            app:layout_constraintBottom_toTopOf="@+id/btn_start"
+            android:layout_marginVertical="10dp"
+            android:valueFrom="-70"
+            android:stepSize="1"
+            android:valueTo="-50"
+            />
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/btn_start"
             android:text="Start"
-            app:layout_constraintTop_toBottomOf="@id/ln"
+            app:layout_constraintTop_toBottomOf="@id/slider"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             />

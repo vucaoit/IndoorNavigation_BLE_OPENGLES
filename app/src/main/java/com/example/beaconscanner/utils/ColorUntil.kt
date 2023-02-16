@@ -9,4 +9,5 @@ object ColorUntil {
     val VIOLET = floatArrayOf(163/255f,0f,1f,1f)
     val PINK = floatArrayOf(1f,0f,1f,1f)
     val WHITE = floatArrayOf(1f,1f,1f,1f)
+    val BLACK_03 = floatArrayOf(0f,0f,0f,0.3f)
 }

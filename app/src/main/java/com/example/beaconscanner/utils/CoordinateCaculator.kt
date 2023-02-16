@@ -91,20 +91,20 @@ object CoordinateCaculator {
         return angleDeg.toFloat()
     }
     fun getTrilateration(position1:Point,r1:Float, position2:Point,r2:Float, position3:Point,r3:Float) :Point{
-        var xa = position1.x;
-        var ya = position1.y;
-        var xb = position2.x;
-        var yb = position2.y;
-        var xc = position3.x;
-        var yc = position3.y;
-        var ra = r1;
-        var rb = r2;
-        var rc = r3;
+        var xa = position1.x * 1.0;
+        var ya = position1.y* 1.0;
+        var xb = position2.x* 1.0;
+        var yb = position2.y* 1.0;
+        var xc = position3.x* 1.0;
+        var yc = position3.y* 1.0;
+        var ra = r1* 1.0;
+        var rb = r2* 1.0;
+        var rc = r3* 1.0;
 
-        var S = (Math.pow(xc.toDouble(),2.00) - Math.pow(xb.toDouble(),2.0) + Math.pow(yc.toDouble(),2.0) - Math.pow(
-            yb.toDouble(),2.0) + Math.pow(rb.toDouble(),2.0) - Math.pow(rc.toDouble(),2.0)) /2.00;
-        var T = (Math.pow(xa.toDouble(),2.0) - Math.pow(xb.toDouble(),2.0) + Math.pow(ya.toDouble(),2.0) - Math.pow(
-            yb.toDouble(),2.0) + Math.pow(rb.toDouble(),2.0) - Math.pow(ra.toDouble(),2.0)) /2.00;
+        var S = (Math.pow(xc,2.00) - Math.pow(xb,2.0) + Math.pow(yc,2.0) - Math.pow(
+            yb,2.0) + Math.pow(rb,2.0) - Math.pow(rc,2.0)) /2.00;
+        var T = (Math.pow(xa,2.0) - Math.pow(xb,2.0) + Math.pow(ya,2.0) - Math.pow(
+            yb,2.0) + Math.pow(rb,2.0) - Math.pow(ra,2.0)) /2.00;
         var y = ((T * (xb - xc)) - (S * (xb - xa))) / (((ya - yb) * (xb - xc)) - ((yc - yb) * (xb - xa)));
         var x = ((y * (ya - yb)) - T) / (xb - xa);
         return Point(x.toFloat(),y.toFloat())

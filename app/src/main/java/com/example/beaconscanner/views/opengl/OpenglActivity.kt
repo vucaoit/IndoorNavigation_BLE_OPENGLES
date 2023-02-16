@@ -14,37 +14,43 @@ import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import android.view.MotionEvent
+import android.view.View
+import android.view.View.OnTouchListener
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.example.beaconscanner.R
 import com.example.beaconscanner.components.JoystickView
 import com.example.beaconscanner.components.JoystickView.OnJoystickMoveListener
-import com.example.beaconscanner.databinding.ActivityMainBinding
 import com.example.beaconscanner.databinding.ActivityOpenglBinding
 import com.example.beaconscanner.model.Beacon
 import com.example.beaconscanner.model.Point
 import com.example.beaconscanner.utils.CoordinateCaculator
 import com.example.beaconscanner.utils.Utils
-import java.io.File
-import java.io.FileNotFoundException
-import java.io.FileOutputStream
-import java.io.IOException
+import com.google.android.material.slider.Slider
 import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.math.roundToInt
 
 class OpenglActivity : AppCompatActivity() {
     private lateinit var binding: ActivityOpenglBinding
     private var isBeacon1Clicked = false
     private var isBeacon2Clicked = false
     private var isBeacon3Clicked = false
-    private val speed = 0.005f
+    private var speed = 0.05f
     private var max = 0;
     private var min = 0;
     private val beacon1 = "FDA50693A4E24FB1AFCFC6EB07647821"
     private val beacon2 = "FDA50693A4E24FB1AFCFC6EB07647822"
     private val beacon3 = "FDA50693A4E24FB1AFCFC6EB07647823"
     private var timeStart: Calendar? = null
+    private var isStart = false
+    private var arrRssi1 = ArrayList<Float>()
+    private var arrRssi2 = ArrayList<Float>()
+    private var arrRssi3 = ArrayList<Float>()
+    var measuaredPower = -58
+
     private var requestBluetooth =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == 1) {
@@ -87,14 +93,6 @@ class OpenglActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityOpenglBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        val a = Point(3.48616f, -5.54667f)
-        val b = Point(-1.04f, 0.44f)
-        val c = Point(1f, 3f)
-        val r1 = 1.36f
-        val r2 =  1.2f
-        val r3 = 1.84f
-        Log.e("angle p1,p2,p3",CoordinateCaculator.calculateAngle(a.x,a.y,b.x,b.y,c.x,c.y).toString())
-        Log.e("Coo",CoordinateCaculator.calculateCoordinateByPointAndAngle(c,7.5f,a,20.87f).toString())
         binding.apply {
             btnBeacon1.setOnClickListener {
                 isBeacon1Clicked = true
@@ -113,30 +111,55 @@ class OpenglActivity : AppCompatActivity() {
             }
             joyStick.setOnJoystickMoveListener(object : OnJoystickMoveListener {
                 override fun onValueChanged(angle: Int, power: Int, direction: Int) {
+                    println(power)
+                    speed = 0.0008f * power
                     if (isBeacon1Clicked) {
                         val position = myGLSurfaceView.beacon1GetPosition()
-                        val newPosition = CoordinateCaculator.circleXY(position, speed, angle * 1f)
+                        val newPosition =
+                            CoordinateCaculator.circleXY(position, speed, angle * 1.0f)
                         myGLSurfaceView.beacon1SetPosition(newPosition)
+                        println(newPosition)
                     } else {
                         if (isBeacon2Clicked) {
                             val position = myGLSurfaceView.beacon2GetPosition()
                             val newPosition =
-                                CoordinateCaculator.circleXY(position, speed, angle * 1f)
+                                CoordinateCaculator.circleXY(position, speed, angle * 1.0f)
                             myGLSurfaceView.beacon2SetPosition(newPosition)
+                            println(newPosition)
                         } else {
                             val position = myGLSurfaceView.beacon3GetPosition()
                             val newPosition =
-                                CoordinateCaculator.circleXY(position, speed, angle * 1f)
+                                CoordinateCaculator.circleXY(position, speed, angle * 1.0f)
                             myGLSurfaceView.beacon3SetPosition(newPosition)
+                            println(newPosition)
                         }
                     }
 
                 }
             }, JoystickView.DEFAULT_LOOP_INTERVAL)
+            slider.addOnChangeListener(Slider.OnChangeListener { _, value, _ ->
+//                if (isBeacon1Clicked) {
+//                    myGLSurfaceView.setDistance1(value)
+//                } else {
+//                    if (isBeacon2Clicked) {
+//                        myGLSurfaceView.setDistance2(value)
+//                    } else {
+//                        myGLSurfaceView.setDistance3(value)
+//                    }
+//                }
+                measuaredPower = value.roundToInt()
+            })
         }
         setUpBluetoothManager()
         binding.btnStart.setOnClickListener {
-            onStartScannerButtonClick()
+            if (!isStart) {
+                onStartScannerButtonClick()
+                binding.btnStart.text = "STOP"
+            } else {
+                onStopScannerButtonClick()
+                binding.btnStart.text = "Start"
+            }
+            isStart = !isStart
         }
     }
 
@@ -250,7 +273,7 @@ class OpenglActivity : AppCompatActivity() {
             beacon.rssi = result.rssi
             if (scanRecord != null) {
                 var iBeaconManufactureData = scanRecord.getManufacturerSpecificData(0X004c)
-                if(iBeaconManufactureData == null){
+                if (iBeaconManufactureData == null) {
                     iBeaconManufactureData = scanRecord.getManufacturerSpecificData(0XFFFF)
                 }
                 if (iBeaconManufactureData != null && iBeaconManufactureData.size >= 23) {
@@ -276,24 +299,47 @@ class OpenglActivity : AppCompatActivity() {
                     beacon.uuid = iBeaconUUID
                     beacon.major = major
                     beacon.minor = minor
-                    val measuaredPower = -58
                     val N = 3
-                    val distance =
-                        Math.pow(10.0, (measuaredPower - beacon.rssi!!) / (10.0 * N))
-                    when(iBeaconUUID){
-                        beacon1->{
-                            Log.d("BEACON1","${distance}")
-                            binding.myGLSurfaceView.setDistance1(distance.toFloat() * RATIO_DISTANCE)
+                    when (iBeaconUUID) {
+                        beacon1 -> {
+
+                            if (arrRssi1.size < 3) {
+                                arrRssi1.add(beacon.rssi!! * 1f)
+                            } else {
+                                val temp = (arrRssi1[0] + arrRssi1[1] + arrRssi1[2]) / 3
+                                val distance =
+                                    Math.pow(10.0, (measuaredPower - temp) / (10.0 * N))
+                                binding.myGLSurfaceView.setDistance1(distance.toFloat())
+                                arrRssi1.removeAt(0)
+                            }
+//                            Log.d("BEACON1",arrRssi1.toString())
                         }
-                        beacon2->{
-                            Log.d("BEACON2","${distance}")
-                            binding.myGLSurfaceView.setDistance2(distance.toFloat() * RATIO_DISTANCE)
+                        beacon2 -> {
+                            if (arrRssi2.size < 3) {
+                                arrRssi2.add(beacon.rssi!! * 1f)
+                            } else {
+                                val temp = (arrRssi2[0] + arrRssi2[1] + arrRssi2[2]) / 3
+                                val distance =
+                                    Math.pow(10.0, (measuaredPower - temp) / (10.0 * N))
+                                binding.myGLSurfaceView.setDistance2(distance.toFloat())
+                                arrRssi2.removeAt(0)
+                            }
+//                            Log.d("BEACON2",arrRssi2.toString())
                         }
-                        beacon3->{
-                            Log.d("BEACON3","${distance}")
-                            binding.myGLSurfaceView.setDistance3(distance.toFloat() * RATIO_DISTANCE)
+                        beacon3 -> {
+                            if (arrRssi3.size < 3) {
+                                arrRssi3.add(beacon.rssi!! * 1f)
+                            } else {
+                                val temp = (arrRssi3[0] + arrRssi3[1] + arrRssi3[2]) / 3
+                                val distance =
+                                    Math.pow(10.0, (measuaredPower - temp) / (10.0 * N))
+                                binding.myGLSurfaceView.setDistance3(distance.toFloat())
+                                arrRssi3.removeAt(0)
+                            }
+//                            Log.d("BEACON3",arrRssi3.toString())
                         }
                     }
+
 
                     if (min == 0 || max == 0) {
                         min = beacon.rssi!!
