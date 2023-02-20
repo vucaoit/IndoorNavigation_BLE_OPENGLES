@@ -16,8 +16,8 @@ class MainActivity : AppCompatActivity() {
 //        binding.activityOpengl.setOnClickListener{
             startActivity(Intent(this,OpenglActivity::class.java))
 //        }
-        binding.activityBeaconScanner.setOnClickListener{
-            startActivity(Intent(this,BeaconScannerActivity::class.java))
-        }
+//        binding.activityBeaconScanner.setOnClickListener{
+//            startActivity(Intent(this,BeaconScannerActivity::class.java))
+//        }
     }
 }

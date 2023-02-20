@@ -1,7 +1,8 @@
 package com.example.beaconscanner.views.beacon
 
 import android.Manifest
-import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+import android.Manifest.permission.*
+import android.app.Activity
 import android.app.AlertDialog
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
@@ -13,7 +14,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.os.ParcelUuid
 import android.util.Log
 import android.widget.Toast
@@ -26,27 +26,26 @@ import com.example.beaconscanner.databinding.ActivityBeaconScannerBinding
 import com.example.beaconscanner.model.Beacon
 import com.example.beaconscanner.utils.Utils
 import java.io.*
-import java.text.DecimalFormat
-import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.math.pow
-
 
 class BeaconScannerActivity : AppCompatActivity() {
     private lateinit var binding: ActivityBeaconScannerBinding
-    private var isStart = false;
-    private var max = 0;
-    private var min = 0;
-    private val beacon1 = "FDA50693A4E24FB1AFCFC6EB07647825"
+    private var isStart = false
+    private var max = 0
+    private var min = 0
+    private val beacon1 = "FDA50693A4E24FB1AFCFC6EB07647822"
     private var timeStart: Calendar? = null
     private var isWriting = false
     private var requestBluetooth =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == 1) {
+        registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
                 //granted
+                Log.d("TAG", "Permission granted")
                 println("cap phep")
             } else {
                 //deny
+                Log.d("TAG", "Permission deny")
                 println("tu choi")
             }
         }
@@ -56,10 +55,10 @@ class BeaconScannerActivity : AppCompatActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         when {
-            permissions.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false) -> {
+            permissions.getOrDefault(ACCESS_FINE_LOCATION, false) -> {
                 // Precise location access granted.
             }
-            permissions.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false) -> {
+            permissions.getOrDefault(ACCESS_COARSE_LOCATION, false) -> {
                 // Only approximate location access granted.
             }
             else -> {
@@ -79,18 +78,17 @@ class BeaconScannerActivity : AppCompatActivity() {
     val eddystoneServiceId: ParcelUuid =
         ParcelUuid.fromString("0000FEAA-0000-1000-8000-00805F9B34FB")
 
-
     @RequiresApi(Build.VERSION_CODES.N)
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        binding = ActivityBeaconScannerBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+    fun requestAllPermission(){
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+            requestBluetooth.launch(enableBtIntent)
             requestMultiplePermissions.launch(
                 arrayOf(
-                    Manifest.permission.BLUETOOTH_SCAN,
-                    Manifest.permission.BLUETOOTH_CONNECT,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
+                    BLUETOOTH_SCAN,
+                    BLUETOOTH_CONNECT,
+                    ACCESS_COARSE_LOCATION,
+                    WRITE_EXTERNAL_STORAGE
                 )
             )
         } else {
@@ -98,12 +96,25 @@ class BeaconScannerActivity : AppCompatActivity() {
             requestBluetooth.launch(enableBtIntent)
             locationPermissionRequest.launch(
                 arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
+                    ACCESS_FINE_LOCATION,
+                    ACCESS_COARSE_LOCATION,
+                    WRITE_EXTERNAL_STORAGE
                 )
             )
         }
-        setUpBluetoothManager()
+    }
+
+    @RequiresApi(Build.VERSION_CODES.N)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityBeaconScannerBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        requestAllPermission()
+
+        btManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        btAdapter = btManager!!.adapter
+        btScanner = btAdapter?.bluetoothLeScanner
+
         binding.apply {
             btnScanner.setOnClickListener {
                 if (!isStart) {
@@ -133,25 +144,28 @@ class BeaconScannerActivity : AppCompatActivity() {
 
     private fun onStartScannerButtonClick() {
         if (ActivityCompat.checkSelfPermission(
-                this.applicationContext,
-                Manifest.permission.BLUETOOTH_SCAN
-            ) != PackageManager.PERMISSION_GRANTED
+                this.applicationContext, BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED
         ) {
-
+            Log.d("TAG", (ActivityCompat.checkSelfPermission(
+                this.applicationContext, BLUETOOTH_SCAN).toString()))
+            Log.d("TAG", "stop here")
             return
         } else {
+            Log.d("TAG", "stop here1")
         }
         if (ContextCompat.checkSelfPermission(
                 this,
-                Manifest.permission.ACCESS_FINE_LOCATION
+                ACCESS_FINE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             ActivityCompat.requestPermissions(
                 this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                arrayOf(ACCESS_FINE_LOCATION),
                 0
             )
+            Log.d("TAG", "stop here2")
         } else {
+            Log.d("TAG", "start scan")
 //            timeStart = Calendar.getInstance()
             btScanner?.startScan(leScanCallback)
         }
@@ -160,7 +174,7 @@ class BeaconScannerActivity : AppCompatActivity() {
     private fun onStopScannerButtonClick() {
         if (ActivityCompat.checkSelfPermission(
                 this.applicationContext,
-                Manifest.permission.BLUETOOTH_SCAN
+                BLUETOOTH_SCAN
             ) != PackageManager.PERMISSION_GRANTED
         ) {
 
@@ -168,37 +182,6 @@ class BeaconScannerActivity : AppCompatActivity() {
         }
         btScanner!!.stopScan(leScanCallback)
         timeStart = null
-    }
-
-
-    @RequiresApi(Build.VERSION_CODES.M)
-    private fun setUpBluetoothManager() {
-        btManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-        btAdapter = btManager!!.adapter
-        btScanner = btAdapter?.bluetoothLeScanner
-        if (btAdapter != null && !btAdapter!!.isEnabled) {
-            val enableIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-            startActivityForResult(enableIntent, REQUEST_ENABLE_BT)
-        }
-        checkForLocationPermission()
-    }
-
-    @RequiresApi(Build.VERSION_CODES.M)
-    private fun checkForLocationPermission() {
-        // Make sure we have access coarse location enabled, if not, prompt the user to enable it
-        if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            val builder = AlertDialog.Builder(this)
-            builder.setTitle("This app needs location access")
-            builder.setMessage("Please grant location access so this app can detect  peripherals.")
-            builder.setPositiveButton(android.R.string.ok, null)
-            builder.setOnDismissListener {
-                requestPermissions(
-                    arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, WRITE_EXTERNAL_STORAGE),
-                    PERMISSION_REQUEST_COARSE_LOCATION,
-                )
-            }
-            builder.show()
-        }
     }
 
     override fun onRequestPermissionsResult(
@@ -229,7 +212,7 @@ class BeaconScannerActivity : AppCompatActivity() {
             val beacon = Beacon(result.device.address)
             if (ActivityCompat.checkSelfPermission(
                     this@BeaconScannerActivity,
-                    Manifest.permission.BLUETOOTH_CONNECT
+                    BLUETOOTH_CONNECT
                 ) != PackageManager.PERMISSION_GRANTED
             ) {
                 return
@@ -261,7 +244,7 @@ class BeaconScannerActivity : AppCompatActivity() {
                     beacon.uuid = iBeaconUUID
                     beacon.major = major
                     beacon.minor = minor
-                    if (iBeaconUUID == beacon1 && major == 10010) {
+                    if (iBeaconUUID == beacon1 && major == 2) {
                         Log.d("RSSI", "${beacon.rssi}")
                         val fileName = "BeaconTesting"
                         if (isWriting) {
@@ -341,7 +324,6 @@ class BeaconScannerActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val REQUEST_ENABLE_BT = 1
         private const val PERMISSION_REQUEST_COARSE_LOCATION = 1
     }
 }
